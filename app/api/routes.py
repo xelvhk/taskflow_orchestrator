@@ -49,3 +49,11 @@ def list_tasks(
 @router.post("/{task_id}/cancel", response_model=TaskResponse)
 def cancel_task(task_id: str, session: DbSession, current_user: CurrentUser) -> TaskResponse:
     return TaskService(session).cancel_task(user=current_user, task_id=task_id)
+
+
+@router.post("/{task_id}/replay", response_model=TaskResponse, status_code=status.HTTP_202_ACCEPTED)
+def replay_task(task_id: str, session: DbSession, current_user: CurrentUser) -> TaskResponse:
+    return TaskService(session, enqueue_task=enqueue_summarize_task).replay_task(
+        user=current_user,
+        task_id=task_id,
+    )

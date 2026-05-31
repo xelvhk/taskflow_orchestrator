@@ -68,6 +68,7 @@ make smoke
 - `GET /tasks/{id}` - получить статус, результат, ошибку и историю попыток.
 - `GET /tasks?status=queued&limit=20&offset=0` - список задач с фильтрацией и пагинацией.
 - `POST /tasks/{id}/cancel` - отменить задачу в статусе `queued` или `retrying`.
+- `POST /tasks/{id}/replay` - вернуть задачу из `dead_letter` обратно в `queued`.
 
 Все `/tasks` endpoints требуют `X-API-Key`. `POST /tasks` поддерживает `Idempotency-Key`, чтобы безопасно повторять запросы на создание задачи.
 
@@ -79,6 +80,7 @@ queued -> running -> retrying -> running
 queued -> running -> failed
 queued -> running -> dead_letter
 queued/retrying -> cancelled
+dead_letter -> queued
 ```
 
 Retryable mock failure можно вызвать, добавив `__retry__` в текст. Non-retryable mock failure можно вызвать через `__fail__`.

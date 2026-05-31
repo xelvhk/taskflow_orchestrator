@@ -43,6 +43,7 @@ The worker does not trust Celery result storage as durable business state. Celer
 - Duplicate worker delivery is guarded by a short-lived Redis lock plus terminal-state checks.
 - Retryable adapter errors move the task to `retrying` and schedule another Celery execution.
 - Exhausted retry budget moves the task to `dead_letter`.
+- Dead-letter tasks can be replayed explicitly, which resets runtime fields and enqueues the same task id again.
 - Non-retryable adapter or payload errors move the task to `failed`.
 - Completed, failed, dead-lettered, and cancelled tasks are not re-executed by the service layer.
 
@@ -56,6 +57,6 @@ The worker does not trust Celery result storage as durable business state. Celer
 ## Extension Points
 
 - Add an OpenAI or local-model summarization adapter behind `SummarizationAdapter`.
-- Add an admin replay endpoint for `dead_letter` tasks.
+- Add role-based admin controls around `dead_letter` replay.
 - Add metrics around queue latency, execution duration, retries, and terminal status counts.
 - Add OpenTelemetry traces connecting API task creation to worker execution.

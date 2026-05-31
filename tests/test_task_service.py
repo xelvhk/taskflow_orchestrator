@@ -109,3 +109,35 @@ def test_non_retryable_failure_moves_to_failed(session: Session, user: User) -> 
     assert task.status == TaskStatus.FAILED
     assert task.retry_count == 0
     assert task.attempts[0].status == TaskStatus.FAILED
+
+
+def test_replay_dead_letter_task_resets_runtime_state_and_enqueues(
+    session: Session,
+    user: User,
+) -> None:
+    task = TaskService(session).create_task(
+        user=user,
+        request=CreateTaskRequest(
+            type=TaskType.SUMMARIZE_TEXT,
+            payload=SummarizeTextPayload(text="please __retry__ forever"),
+            max_retries=0,
+        ),
+        idempotency_key=None,
+    )
+    TaskExecutionService(session, worker_name="worker-1").execute_once(task.id)
+    session.refresh(task)
+    assert task.status == TaskStatus.DEAD_LETTER
+
+    enqueued: list[str] = []
+    replayed = TaskService(session, enqueue_task=enqueued.append).replay_task(
+        user=user,
+        task_id=task.id,
+    )
+
+    assert replayed.status == TaskStatus.QUEUED
+    assert replayed.retry_count == 0
+    assert replayed.error is None
+    assert replayed.result is None
+    assert replayed.next_retry_at is None
+    assert replayed.completed_at is None
+    assert enqueued == [task.id]

@@ -68,6 +68,7 @@ make smoke
 - `GET /tasks/{id}` - get status, result, error, and attempts.
 - `GET /tasks?status=queued&limit=20&offset=0` - list tasks.
 - `POST /tasks/{id}/cancel` - cancel `queued` or `retrying` tasks.
+- `POST /tasks/{id}/replay` - move a `dead_letter` task back to `queued`.
 
 All `/tasks` endpoints require `X-API-Key`. `POST /tasks` supports `Idempotency-Key` to make retries safe.
 
@@ -79,6 +80,7 @@ queued -> running -> retrying -> running
 queued -> running -> failed
 queued -> running -> dead_letter
 queued/retrying -> cancelled
+dead_letter -> queued
 ```
 
 Retryable mock failures are triggered by including `__retry__` in the text. Non-retryable mock failures are triggered by `__fail__`.

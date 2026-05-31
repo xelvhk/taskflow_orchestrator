@@ -107,6 +107,28 @@ class TaskService:
         self.session.refresh(task)
         return task
 
+    def replay_task(self, *, user: User, task_id: str) -> Task:
+        task = self.get_task(user=user, task_id=task_id)
+        if task.status != TaskStatus.DEAD_LETTER:
+            raise APIError(
+                status_code=409,
+                code="TASK_NOT_REPLAYABLE",
+                message="Only dead-letter tasks can be replayed.",
+            )
+
+        task.status = TaskStatus.QUEUED
+        task.error = None
+        task.result = None
+        task.retry_count = 0
+        task.next_retry_at = None
+        task.completed_at = None
+        self.session.commit()
+        self.session.refresh(task)
+
+        if self.enqueue_task is not None:
+            self.enqueue_task(task.id)
+        return task
+
 
 class TaskExecutionService:
     def __init__(

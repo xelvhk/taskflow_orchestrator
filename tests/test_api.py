@@ -79,3 +79,16 @@ def test_cancel_missing_task_returns_404(client: TestClient, api_key: str) -> No
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "TASK_NOT_FOUND"
+
+
+def test_replay_rejects_non_dead_letter_task(client: TestClient, api_key: str) -> None:
+    created = client.post(
+        "/tasks",
+        headers={"X-API-Key": api_key},
+        json={"type": "summarize_text", "payload": {"text": "not dead letter"}},
+    ).json()
+
+    response = client.post(f"/tasks/{created['id']}/replay", headers={"X-API-Key": api_key})
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "TASK_NOT_REPLAYABLE"
