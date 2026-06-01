@@ -2,7 +2,7 @@
 
 [Русская версия](README.ru.md)
 
-Production-style FastAPI backend for reliable async task orchestration. The MVP exposes an API for creating `summarize_text` jobs, executes them in Celery workers, persists status/result/history in PostgreSQL, and uses Redis for broker/locks.
+Production-style FastAPI backend for reliable async task orchestration. The MVP exposes an API for creating durable `summarize_text` and `video_draft` jobs, executes them in Celery workers, persists status/result/history in PostgreSQL, and uses Redis for broker/locks.
 
 ## Why This Project Matters
 
@@ -48,6 +48,16 @@ curl -X POST http://localhost:8000/tasks \
   -d '{"type":"summarize_text","payload":{"text":"Taskflow turns slow work into reliable background jobs with retries."},"max_retries":3}'
 ```
 
+Create a video draft task for the `VIDEO_PRODUCER` path:
+
+```bash
+curl -X POST http://localhost:8000/tasks \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "Idempotency-Key: video-001" \
+  -d '{"type":"video_draft","payload":{"source":"telegram","telegram":{"chat_id":"42","user_id":"7"},"brief":{"topic":"ai-video-factory portfolio","audience":"portfolio reviewers","cta":"subscribe","language":"en","target_platform":"youtube_shorts","duration_sec":60,"tone":"expert, practical","format":"9:16","review_required":true},"discussion":{"steps":[]},"tool":{"agent_role":"VIDEO_PRODUCER","adapter":"ai-video-factory"}},"max_retries":3}'
+```
+
 Check status:
 
 ```bash
@@ -83,7 +93,7 @@ queued/retrying -> cancelled
 dead_letter -> queued
 ```
 
-Retryable mock failures are triggered by including `__retry__` in the text. Non-retryable mock failures are triggered by `__fail__`.
+Retryable mock failures are triggered by including `__retry__` in summarize text. Non-retryable mock failures are triggered by `__fail__`. For `video_draft`, the worker calls `VIDEO_FACTORY_WEBHOOK_URL`; network/5xx failures are retryable, while malformed responses fail with a sanitized error.
 
 ## Local Development
 
@@ -120,7 +130,7 @@ uv run celery -A app.workers.celery_app.celery_app worker --loglevel=info
 
 ## Design Trade-offs
 
-- Real LLM integration is intentionally out of scope for v1. The summarization adapter is isolated so an OpenAI or local model adapter can be added later.
+- Real LLM integration is intentionally out of scope for v1. The summarization and video-factory adapters are isolated so OpenAI/local model/media providers can be added behind stable task contracts later.
 - Tests use SQLite for fast service/API coverage; Docker Compose is the integration path for PostgreSQL, Redis, Celery, and migrations.
 - Celery result backend is not the business source of truth. Clients read status and results from PostgreSQL.
 

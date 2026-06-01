@@ -6,7 +6,7 @@ from app.api.dependencies import CurrentUser, DbSession
 from app.api.schemas import CreateTaskRequest, TaskListResponse, TaskResponse
 from app.db.models import TaskStatus
 from app.services.tasks import TaskService
-from app.workers.tasks import enqueue_summarize_task
+from app.workers.tasks import enqueue_task
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -18,7 +18,7 @@ def create_task(
     current_user: CurrentUser,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> TaskResponse:
-    return TaskService(session, enqueue_task=enqueue_summarize_task).create_task(
+    return TaskService(session, enqueue_task=enqueue_task).create_task(
         user=current_user,
         request=request,
         idempotency_key=idempotency_key,
@@ -53,7 +53,7 @@ def cancel_task(task_id: str, session: DbSession, current_user: CurrentUser) -> 
 
 @router.post("/{task_id}/replay", response_model=TaskResponse, status_code=status.HTTP_202_ACCEPTED)
 def replay_task(task_id: str, session: DbSession, current_user: CurrentUser) -> TaskResponse:
-    return TaskService(session, enqueue_task=enqueue_summarize_task).replay_task(
+    return TaskService(session, enqueue_task=enqueue_task).replay_task(
         user=current_user,
         task_id=task_id,
     )

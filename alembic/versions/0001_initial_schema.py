@@ -18,7 +18,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-task_type = sa.Enum("SUMMARIZE_TEXT", name="tasktype")
+task_type = sa.Enum("SUMMARIZE_TEXT", "VIDEO_DRAFT", name="tasktype")
 task_status = sa.Enum(
     "QUEUED",
     "RUNNING",

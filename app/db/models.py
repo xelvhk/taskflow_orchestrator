@@ -22,6 +22,7 @@ def uuid_str() -> str:
 
 class TaskType(StrEnum):
     SUMMARIZE_TEXT = "summarize_text"
+    VIDEO_DRAFT = "video_draft"
 
 
 class TaskStatus(StrEnum):

@@ -61,6 +61,35 @@ def test_create_task_idempotency_returns_existing_task(client: TestClient, api_k
     assert first.json()["id"] == second.json()["id"]
 
 
+def test_create_video_draft_task(client: TestClient, api_key: str) -> None:
+    response = client.post(
+        "/tasks",
+        headers={"X-API-Key": api_key, "Idempotency-Key": "video-1"},
+        json={
+            "type": "video_draft",
+            "payload": {
+                "source": "telegram",
+                "telegram": {"chat_id": "42", "user_id": "7"},
+                "brief": {
+                    "topic": "ai-video-factory portfolio",
+                    "audience": "portfolio reviewers",
+                    "cta": "subscribe",
+                    "language": "en",
+                    "target_platform": "youtube_shorts",
+                    "duration_sec": 60,
+                    "tone": "expert, practical",
+                    "format": "9:16",
+                    "review_required": True,
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 202
+    assert response.json()["type"] == "video_draft"
+    assert response.json()["payload"]["brief"]["topic"] == "ai-video-factory portfolio"
+
+
 def test_cancel_queued_task(client: TestClient, api_key: str) -> None:
     created = client.post(
         "/tasks",

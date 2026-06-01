@@ -12,12 +12,20 @@ from app.workers.celery_app import celery_app
 logger = logging.getLogger(__name__)
 
 
+def enqueue_task(task_id: str) -> None:
+    execute_task.delay(task_id)
+
+
 def enqueue_summarize_task(task_id: str) -> None:
-    execute_summarize_task.delay(task_id)
+    enqueue_task(task_id)
 
 
-@celery_app.task(name="tasks.execute_summarize_task", bind=True)
-def execute_summarize_task(self, task_id: str) -> None:
+def enqueue_video_draft_task(task_id: str) -> None:
+    enqueue_task(task_id)
+
+
+@celery_app.task(name="tasks.execute_task", bind=True)
+def execute_task(self, task_id: str) -> None:
     redis_client = Redis.from_url(settings.redis_url)
     lock_key = f"taskflow:task-lock:{task_id}"
     lock_acquired = redis_client.set(lock_key, "1", nx=True, ex=300)

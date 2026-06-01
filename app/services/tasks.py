@@ -13,6 +13,7 @@ from app.services.summarization import (
     RetryableTaskError,
     SummarizationAdapter,
 )
+from app.services.video_factory import VideoFactoryAdapter
 
 EnqueueTask = Callable[[str], None]
 
@@ -55,7 +56,7 @@ class TaskService:
         task = self.tasks.create(
             Task(
                 user_id=user.id,
-                type=TaskType.SUMMARIZE_TEXT,
+                type=request.type,
                 status=TaskStatus.QUEUED,
                 payload=request.payload.model_dump(),
                 max_retries=max_retries,
@@ -135,11 +136,13 @@ class TaskExecutionService:
         self,
         session: Session,
         adapter: SummarizationAdapter | None = None,
+        video_factory_adapter: VideoFactoryAdapter | None = None,
         worker_name: str | None = None,
     ) -> None:
         self.session = session
         self.tasks = TaskRepository(session)
-        self.adapter = adapter or SummarizationAdapter()
+        self.summarization_adapter = adapter or SummarizationAdapter()
+        self.video_factory_adapter = video_factory_adapter or VideoFactoryAdapter()
         self.worker_name = worker_name
 
     def execute_once(self, task_id: str) -> int | None:
@@ -163,7 +166,7 @@ class TaskExecutionService:
 
         started_at = datetime.now(UTC)
         try:
-            result = self.adapter.summarize(str(task.payload["text"]))
+            result = self._execute_task_payload(task)
         except RetryableTaskError as exc:
             return self._handle_retryable_error(task, attempt, str(exc), started_at)
         except (NonRetryableTaskError, KeyError, TypeError) as exc:
@@ -181,6 +184,13 @@ class TaskExecutionService:
         task.completed_at = finished_at
         self.session.commit()
         return None
+
+    def _execute_task_payload(self, task: Task) -> dict[str, object]:
+        if task.type == TaskType.SUMMARIZE_TEXT:
+            return self.summarization_adapter.summarize(str(task.payload["text"]))
+        if task.type == TaskType.VIDEO_DRAFT:
+            return self.video_factory_adapter.create_draft(task.payload)
+        raise NonRetryableTaskError(f"Unsupported task type: {task.type}")
 
     def _handle_retryable_error(
         self,

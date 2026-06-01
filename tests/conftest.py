@@ -57,7 +57,7 @@ def client(
 ) -> Generator[TestClient, None, None]:
     import app.api.routes as task_routes
 
-    monkeypatch.setattr(task_routes, "enqueue_summarize_task", lambda task_id: None)
+    monkeypatch.setattr(task_routes, "enqueue_task", lambda task_id: None)
     app = create_app()
 
     def override_session() -> Generator[Session, None, None]:

@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     celery_result_backend: str = "redis://localhost:6379/2"
     default_max_retries: int = Field(default=3, ge=0, le=10)
     retry_base_delay_seconds: int = Field(default=5, ge=1, le=3600)
+    video_factory_webhook_url: str | None = None
+    video_factory_timeout_seconds: float = Field(default=15, ge=1, le=120)
 
 
 @lru_cache
