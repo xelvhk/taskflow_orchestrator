@@ -33,10 +33,6 @@ task_status = sa.Enum(
 
 def upgrade() -> None:
     bind = op.get_bind()
-    if bind.dialect.name == "postgresql":
-        task_type.create(bind, checkfirst=True)
-        task_status.create(bind, checkfirst=True)
-
     json_type = (
         postgresql.JSONB(astext_type=sa.Text())
         if bind.dialect.name == "postgresql"
