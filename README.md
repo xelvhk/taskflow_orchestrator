@@ -74,6 +74,7 @@ make smoke
 
 - `GET /health` - process health.
 - `GET /ready` - database readiness check.
+- `GET /metrics` - Prometheus-style operational metrics.
 - `POST /tasks` - create a task and enqueue it.
 - `GET /tasks/{id}` - get status, result, error, and attempts.
 - `GET /tasks?status=queued&limit=20&offset=0` - list tasks.
@@ -81,6 +82,17 @@ make smoke
 - `POST /tasks/{id}/replay` - move a `dead_letter` task back to `queued`.
 
 All `/tasks` endpoints require `X-API-Key`. `POST /tasks` supports `Idempotency-Key` to make retries safe.
+
+## Observability
+
+`GET /metrics` returns aggregate Prometheus text metrics from PostgreSQL:
+
+- `taskflow_tasks_total{type,status}` - current task counts.
+- `taskflow_task_attempts_total{type,status}` - task attempt counts.
+- `taskflow_task_attempt_duration_ms_avg{type}` - average finished attempt duration.
+- `taskflow_task_queue_latency_ms_avg{type}` - average time from task creation to first worker attempt.
+
+Metrics are aggregate-only and do not expose task payloads, user identifiers, or error details.
 
 ## State Machine
 
@@ -138,7 +150,7 @@ See [Architecture Notes](docs/ARCHITECTURE.md) for the boundary decisions, failu
 
 ## Next Steps
 
-- Add OpenTelemetry traces and Prometheus metrics.
+- Add OpenTelemetry traces.
 - Add PostgreSQL-backed scheduled jobs beyond retry countdowns.
 - Add admin endpoints for dead-letter replay.
 - Add a real LLM summarization adapter behind the existing interface.

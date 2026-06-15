@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.models import Task, TaskAttempt, TaskStatus, User
@@ -73,3 +73,45 @@ class TaskRepository:
         self.session.add(attempt)
         self.session.flush()
         return attempt
+
+    def count_by_type_and_status(self) -> list[tuple[str, str, int]]:
+        rows = self.session.execute(
+            select(Task.type, Task.status, func.count(Task.id)).group_by(Task.type, Task.status)
+        ).all()
+        return [(task_type.value, status.value, count) for task_type, status, count in rows]
+
+    def attempt_count_by_type_and_status(self) -> list[tuple[str, str, int]]:
+        rows = self.session.execute(
+            select(Task.type, TaskAttempt.status, func.count(TaskAttempt.id))
+            .join(Task, TaskAttempt.task_id == Task.id)
+            .group_by(Task.type, TaskAttempt.status)
+        ).all()
+        return [(task_type.value, status.value, count) for task_type, status, count in rows]
+
+    def average_attempt_duration_ms_by_type(self) -> list[tuple[str, float]]:
+        rows = self.session.execute(
+            select(Task.type, func.avg(TaskAttempt.duration_ms))
+            .join(Task, TaskAttempt.task_id == Task.id)
+            .where(TaskAttempt.duration_ms.is_not(None))
+            .group_by(Task.type)
+        ).all()
+        return [
+            (task_type.value, float(average))
+            for task_type, average in rows
+            if average is not None
+        ]
+
+    def first_attempt_queue_latencies_ms_by_type(self) -> list[tuple[str, int]]:
+        rows = self.session.execute(
+            select(Task.type, Task.created_at, func.min(TaskAttempt.started_at))
+            .join(TaskAttempt, TaskAttempt.task_id == Task.id)
+            .group_by(Task.id, Task.type, Task.created_at)
+        ).all()
+
+        latencies: list[tuple[str, int]] = []
+        for task_type, created_at, first_started_at in rows:
+            if first_started_at is None:
+                continue
+            latency_ms = int((first_started_at - created_at).total_seconds() * 1000)
+            latencies.append((task_type.value, max(latency_ms, 0)))
+        return latencies

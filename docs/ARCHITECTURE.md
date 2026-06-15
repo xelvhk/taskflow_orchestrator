@@ -47,6 +47,12 @@ The worker does not trust Celery result storage as durable business state. Celer
 - Non-retryable adapter or payload errors move the task to `failed`.
 - Completed, failed, dead-lettered, and cancelled tasks are not re-executed by the service layer.
 
+## Observability
+
+- `/metrics` exposes Prometheus-style text metrics computed from PostgreSQL.
+- Task metrics are labeled by `type` and `status` to make stuck queues, failed job classes, and dead-letter buildup visible.
+- Attempt duration and queue latency metrics are aggregate-only and avoid payload, user, and error-detail leakage.
+
 ## Intentional Trade-offs
 
 - SQLite is used for fast local unit/API tests; PostgreSQL is used by Docker Compose and migrations.
@@ -58,5 +64,4 @@ The worker does not trust Celery result storage as durable business state. Celer
 
 - Add an OpenAI or local-model summarization adapter behind `SummarizationAdapter`.
 - Add role-based admin controls around `dead_letter` replay.
-- Add metrics around queue latency, execution duration, retries, and terminal status counts.
 - Add OpenTelemetry traces connecting API task creation to worker execution.

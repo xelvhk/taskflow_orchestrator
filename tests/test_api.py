@@ -1,9 +1,43 @@
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from app.api.schemas import CreateTaskRequest, SummarizeTextPayload
+from app.db.models import TaskType, User
+from app.services.tasks import TaskExecutionService, TaskService
 
 
 def test_health_and_readiness(client: TestClient) -> None:
     assert client.get("/health").json()["status"] == "ok"
     assert client.get("/ready").json()["status"] == "ready"
+
+
+def test_metrics_exposes_aggregate_task_and_attempt_counts(
+    client: TestClient,
+    session: Session,
+    user: User,
+) -> None:
+    task = TaskService(session).create_task(
+        user=user,
+        request=CreateTaskRequest(
+            type=TaskType.SUMMARIZE_TEXT,
+            payload=SummarizeTextPayload(text="metrics should see this task"),
+            max_retries=1,
+        ),
+        idempotency_key=None,
+    )
+    TaskExecutionService(session, worker_name="worker-1").execute_once(task.id)
+
+    response = client.get("/metrics")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert 'taskflow_tasks_total{type="summarize_text",status="succeeded"} 1' in response.text
+    assert (
+        'taskflow_task_attempts_total{type="summarize_text",status="succeeded"} 1'
+        in response.text
+    )
+    assert 'taskflow_task_attempt_duration_ms_avg{type="summarize_text"}' in response.text
+    assert 'taskflow_task_queue_latency_ms_avg{type="summarize_text"}' in response.text
 
 
 def test_tasks_require_api_key(client: TestClient) -> None:

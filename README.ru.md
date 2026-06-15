@@ -64,6 +64,7 @@ make smoke
 
 - `GET /health` - проверка, что процесс жив.
 - `GET /ready` - readiness check с проверкой соединения с БД.
+- `GET /metrics` - operational metrics в Prometheus-style формате.
 - `POST /tasks` - создать задачу и поставить ее в очередь.
 - `GET /tasks/{id}` - получить статус, результат, ошибку и историю попыток.
 - `GET /tasks?status=queued&limit=20&offset=0` - список задач с фильтрацией и пагинацией.
@@ -71,6 +72,17 @@ make smoke
 - `POST /tasks/{id}/replay` - вернуть задачу из `dead_letter` обратно в `queued`.
 
 Все `/tasks` endpoints требуют `X-API-Key`. `POST /tasks` поддерживает `Idempotency-Key`, чтобы безопасно повторять запросы на создание задачи.
+
+## Observability
+
+`GET /metrics` возвращает агрегированные Prometheus text metrics из PostgreSQL:
+
+- `taskflow_tasks_total{type,status}` - текущее количество задач.
+- `taskflow_task_attempts_total{type,status}` - количество attempts.
+- `taskflow_task_attempt_duration_ms_avg{type}` - средняя длительность завершенных attempts.
+- `taskflow_task_queue_latency_ms_avg{type}` - среднее время от создания задачи до первой worker attempt.
+
+Метрики агрегированные: они не раскрывают payload задач, user identifiers или детали ошибок.
 
 ## State Machine
 
@@ -128,7 +140,7 @@ uv run celery -A app.workers.celery_app.celery_app worker --loglevel=info
 
 ## Следующие Шаги
 
-- Добавить OpenTelemetry traces и Prometheus metrics.
+- Добавить OpenTelemetry traces.
 - Добавить PostgreSQL-backed scheduled jobs помимо retry countdowns.
 - Добавить admin endpoints для replay задач из `dead_letter`.
 - Добавить реальный LLM summarization adapter за существующим интерфейсом.
